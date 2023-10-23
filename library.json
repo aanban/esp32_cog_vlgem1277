@@ -1,0 +1,18 @@
+{
+  "name": "esp32_cog_vlgem1277",
+  "version": "1.0.0",
+  "description": "Graphics lib and driver for Varitronix VL-FS-COG-VLGEM1277 LCD, with 240 x 64 pixel that is using the Epson S1D1572100B000 Driver Chip",
+  "author": "aanban",
+  "license": "MIT license",
+  "keywords": ["Varitronix", "VL-FS-COG-VLGEM1277", "ESPON S1D1572100B000"],
+  "frameworks": "arduino",
+  "platforms": ["espressif32"],
+  "directories": {
+    "src": "src"
+  },
+  "homepage": "https://github.com/aanban/esp32_cog_vlgem1277#README",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aanban/esp32_cog_vlgem1277.git"
+  }
+}
