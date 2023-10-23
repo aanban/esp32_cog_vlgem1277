@@ -3,7 +3,7 @@
 This library consist of a LCD driver for the Varitronix COG-VLGEM1277-01 Display that is currently available hat [pollin.de](https://www.pollin.de/p/varitronix-lcd-cog-vlgem1277-01-240x64-pixel-121713)
 
 
-More Information about how to connect to a µC can be found at [mikrocontroller.netk](https://www.mikrocontroller.net/topic/472549)
+More Information about how to connect to a µC can be found at [mikrocontroller.net](https://www.mikrocontroller.net/topic/472549)
 
 # example
 
