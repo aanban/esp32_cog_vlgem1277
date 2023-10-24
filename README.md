@@ -12,26 +12,26 @@ Some more information about how to connect to a µC can be found at [mikrocontro
 ![img04](doc/COG_VLGEM1277_04.jpg)
 ![img05](doc/COG_VLGEM1277_05.jpg)
 
-# sample code
+# Usage
 
-### - include header file and font files
+### 1) Include header file and font files
 ```c
 #include "cog_vlgem1277_lcd.h"
 #include "font_mono6x8.h"
 ```
 
-### - create an instance of the class with the SPI pin connected to the µC
+### 2) Create an instance of the class with the SPI pin connected to the µC, e.g. the standard ESP32 SPI bus (5,18,23 and 17 for Address-Bit)
 ```c
 COG_VLGEM1277 lcd(PIN_CS,PIN_SCK,PIN_MOSI,PIN_A0);
 ```
-### - call Begin() member to init the display
+### 3) Call Begin() member to init SPI and the display
 ```c
 void setup() {
   lcd.Begin();
 }
 ```
 
-### - use the text and graphics functions e.g.
+### 4) Use the text and graphics functions e.g.
 ```c
 lcd.DrawRect( 0,18,98,32);
 lcd.DrawCircle(190,30,10,col_e::WHITE,col_e::BLACK);
@@ -42,7 +42,7 @@ lcd.RefreshLCD();
 ```
 
 
-### Sample main.cpp
+# Sample main.cpp
 
 ```c
 #include <Arduino.h>
