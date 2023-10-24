@@ -33,42 +33,6 @@ static const char bt01[] =
   "8 HandglovesHamburgefontsRafgendu"
   ;
 
-// void draw_title(const char *title){
-//   lcd.ClearScreen();
-//   lcd.SetFont((uint8_t *)Sans6x8,col_e::BLACK,col_e::WHITE); 
-//   lcd.DrawString(title); 
-//   lcd.SetCursor(0,16);
-//   lcd.RefreshLCD();
-// }
-
-// void test_ruler_font(uint8_t *font, const char* title) {
-//   lcd.ClearScreen();
-//   lcd.SetRefreshMode(mod_e::autoRefresh_ON); // automatic refresh 
-//   lcd.SetFont(font); 
-//   lcd.SetLfMode(lf_e::autoLF_OFF); // auto-linefeed off
-//   lcd.SetCursor(0,0); 
-//   for(int32_t xc=0; xc<LCD_WIDTH; xc+=6) {
-//     for(int32_t yc=0; yc<LCD_HEIGHT; yc+=8) {
-//       lcd.DrawPixel(xc,yc);
-//     }
-//   }
-//   lcd.SetCursor(12,16);
-//   lcd.printf("%s",title);
-//   lcd.SetCursor(0,24); 
-//   lcd.printf("0---------1---------2---------3---------4---------5---------6\n");
-//   lcd.RefreshLCD();
-//   lcd.SetCursor(0,32); 
-//   lcd.printf("abcdefghijklmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZabcefghijk\n");
-//   lcd.RefreshLCD();
-//   delay(5000);
-//   lcd.SetCursor(0,24); 
-//   lcd.printf("0123456789-123456789-123456789-123456789-123456789-123456789-\n");
-//   lcd.RefreshLCD();
-//   delay(5000);
-// }
-
-
-
 void test_font_alphabet(uint8_t *font, const char* font_name) {
   int16_t fnt_ch_s=lcd.GetFontStartChar();    // start char of font
   int16_t fnt_ch_e=lcd.GetFontEndChar();      // end char of font
@@ -144,7 +108,6 @@ void test_rectangle(void) {
   delay(2000);
 }
 
-
 void test_lines(void) {
   lcd.ClearScreen();
   lcd.DrawRect(0,0,xMax,63);
@@ -182,6 +145,7 @@ void loop() {
   test_font_alphabet(  (uint8_t *)Serif6x8, "Serif6x8");
   test_font_alphabet(  (uint8_t *)Sans6x8,  "Sans6x8");
   test_font_alphabet(  (uint8_t *)Square6x8,"Square6x8");
+  
   test_font_typewriter((uint8_t *)Mono6x8,  "Mono6x8" );
   test_font_typewriter((uint8_t *)Serif6x8, "Serif6x8");
   test_font_typewriter((uint8_t *)Sans6x8,  "Sans6x8");
