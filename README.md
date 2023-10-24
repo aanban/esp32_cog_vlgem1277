@@ -9,8 +9,37 @@ Some more information about how to connect to a µC can be found at [mikrocontro
 
 # sample code
 
+### - include header file and font files
 ```c
+#include "cog_vlgem1277_lcd.h"
+#include "font_mono6x8.h"
+```
 
+### - create an instance of the class with the SPI pin connected to the µC
+```c
+COG_VLGEM1277 lcd(PIN_CS,PIN_SCK,PIN_MOSI,PIN_A0);
+```
+### - call Begin() member to init the display
+```c
+void setup() {
+  lcd.Begin();
+}
+```
+
+### - use the text and graphics functions e.g.
+```c
+lcd.DrawRect( 0,18,98,32);
+lcd.DrawCircle(190,30,10,col_e::WHITE,col_e::BLACK);
+lcd.SetFont(font);
+lcd.SetCursor(0,0);
+lcd.printf("DrawCircle() test ");
+lcd.RefreshLCD();
+```
+
+
+### Sample main.cpp
+
+```c
 #include <Arduino.h>
 #include <SPI.h>
 #include "cog_vlgem1277_lcd.h"
@@ -166,6 +195,4 @@ void loop() {
   test_rectangle();
   test_lines();
 }
-
-
 ```
