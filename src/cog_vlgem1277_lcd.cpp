@@ -2,7 +2,10 @@
 #include <SPI.h>
 #include "cog_vlgem1277_lcd.h"
 
-// private members
+// ------------------------------------------------------------------------
+// private members of class
+// ------------------------------------------------------------------------
+
 void COG_VLGEM1277::WrData(uint8_t data) {
   digitalWrite(m_cs,LOW);
   digitalWrite(m_a0,HIGH); // data mode
@@ -36,18 +39,24 @@ void COG_VLGEM1277::WrCmd(uint8_t cmd, uint8_t arg1, uint8_t arg2) {
   digitalWrite(m_cs,HIGH);
 }
 
-// public members
+// ------------------------------------------------------------------------
+// public members of class
+// ------------------------------------------------------------------------
+
 COG_VLGEM1277::COG_VLGEM1277(uint8_t cs,uint8_t mosi,uint8_t clk,uint8_t a0) {
-  m_cs    = cs;
-  m_mosi  = mosi;
-  m_clk   = clk;
-  m_a0    = a0;
-  m_buf   = (uint8_t*) calloc (LCD_WIDTH*LCD_N_PAGE,sizeof(uint8_t));
-  m_buf16 = (uint16_t*) m_buf;
-  m_mod   = mod_e::autoRefresh_OFF; // do not automatic refresh on startup
-  m_fg    = col_e::WHITE;
-  m_bg    = col_e::BLACK;
-  m_lf    = lf_e::autoLF_ON; // wake up with auto linefeed on
+  m_cs       = cs;
+  m_mosi     = mosi;
+  m_clk      = clk;
+  m_a0       = a0;
+  m_buf      = (uint8_t*) calloc (LCD_WIDTH*LCD_N_PAGE,sizeof(uint8_t));
+  m_buf16    = (uint16_t*) m_buf;
+  m_mod      = mod_e::autoRefresh_OFF; // do not automatic refresh on startup
+  m_fg_col   = col_e::WHITE; // font colors foreground background
+  m_bg_col   = col_e::BLACK;
+  m_edge_col = col_e::WHITE; // draw colors border and fill
+  m_fill_col = col_e::BLACK;
+  m_pat      = pat_e::solid;
+  m_lf       = lf_e::autoLF_ON; // wake up with auto linefeed on
 };
 
 void COG_VLGEM1277::Begin(void) {
@@ -75,40 +84,38 @@ void COG_VLGEM1277::Begin(void) {
 }
 
 void COG_VLGEM1277::DrawPixel(int32_t x, int32_t y, col_e color) {
-  if((x<0) || (x>=LCD_WIDTH) || 
-     (y<0) || (y>=LCD_HEIGHT)) {
-    return; // abort: pixel is out of range
-  }
-  int32_t idx = (x + ((y>>2)*LCD_WIDTH))^1;
-  int32_t msk = ((y<<1) & 7);
-  switch(color) {
-    case col_e::WHITE:{  
-      m_buf[idx] |= (1 << msk);
-      m_buf[idx] |= (2 << msk);
-      break;
-    }
-    case col_e::LIGHT_GREY:{
-      m_buf[idx] &= ~(1 << msk);
-      m_buf[idx] |=  (2 << msk);
-      break;
-    }
-    case col_e::GREY:{
-      m_buf[idx] |=  (1 << msk);
-      m_buf[idx] &= ~(2 << msk);
-      break;
-    }
-    default: { // BLACK
-      m_buf[idx] &= ~(1 << msk);
-      m_buf[idx] &= ~(2 << msk);
-      break;
+  if((-1<x) && (x<LCD_WIDTH) && (-1<y) && (y<LCD_HEIGHT)) {
+    int32_t idx = (x + ((y>>2)*LCD_WIDTH))^1;
+    int32_t msk = ((y<<1) & 7);
+    switch(color) {
+      case col_e::WHITE:{  
+        m_buf[idx] |= (1 << msk);
+        m_buf[idx] |= (2 << msk);
+        break;
+      }
+      case col_e::LIGHT_GREY:{
+        m_buf[idx] &= ~(1 << msk);
+        m_buf[idx] |=  (2 << msk);
+        break;
+      }
+      case col_e::GREY:{
+        m_buf[idx] |=  (1 << msk);
+        m_buf[idx] &= ~(2 << msk);
+        break;
+      }
+      default: { // BLACK
+        m_buf[idx] &= ~(1 << msk);
+        m_buf[idx] &= ~(2 << msk);
+        break;
+      }
     }
   }
 }
 
 void COG_VLGEM1277::ClearScreen(col_e color) {
-  mod_e cur_mode=m_mod; // save current auto-mode;
+  mod_e cur_mode=m_mod;     // save current auto-mode;
   SetRefreshMode(mod_e::autoRefresh_OFF);
-  DrawRect(0,0,LCD_WIDTH,LCD_HEIGHT,color,color);
+  DrawRect(0,0,xMax,yMax,color,color,pat_e::solid);
   RefreshLCD();             // force update
   SetRefreshMode(cur_mode); // restore prev. auto-mode
   SetCursor(0,0);
@@ -128,7 +135,7 @@ void COG_VLGEM1277::Scroll(void) {
     }
   } 
   // erase last text-line, i.e. fill with background color
-  DrawRect(0,LCD_HEIGHT-8,LCD_WIDTH,LCD_HEIGHT,m_bg,m_bg);
+  DrawRect(0,yMax-8,xMax,yMax,m_bg_col,m_bg_col,pat_e::solid);
   RefreshLCD();  // force update
 }
 
@@ -178,20 +185,22 @@ void COG_VLGEM1277::DrawVline(int32_t x, int32_t y0, int32_t y1, col_e color, pa
 }
 
 void COG_VLGEM1277::DrawLine(int32_t x0, int32_t y0, int32_t x1, int32_t y1, col_e color){
-  int32_t dx_sym = 0, dy_sym = 0;
-  int32_t dx_x2 = 0, dy_x2 = 0;
-  int32_t di = 0;
-  int32_t dx = x1-x0;
-  int32_t dy = y1-y0;
+  int32_t dx_sym = 0;
+  int32_t dy_sym = 0;
+  int32_t dx_x2  = 0; 
+  int32_t dy_x2  = 0;
+  int32_t di     = 0;
+  int32_t dx     = x1-x0;
+  int32_t dy     = y1-y0;
 
   if(dx == 0) {   // vertical line 
     AdjustValues(y0,y1);
-    DrawVline(x0,y0,y1,color);
+    DrawVline(x0,y0,y1,color,m_pat);
     return;
   }
   if(dy == 0) {  // horizontal line
     AdjustValues(x0,x1);
-    DrawHline(x0,x1,y0,color);
+    DrawHline(x0,x1,y0,color,m_pat);
     return;
   }
   dx_sym=(dx>0)? 1:-1;
@@ -237,37 +246,35 @@ void COG_VLGEM1277::DrawBox(int32_t x0, int32_t y0, int32_t x1, int32_t y1, pat_
   DrawRect(x0,y0,x1,y1,col_e::WHITE,col_e::NONE,pat);
 }
 
-void COG_VLGEM1277::DrawRect(int32_t x0, int32_t y0, int32_t x1, int32_t y1, col_e col_border, col_e col_fill, pat_e pattern) {
-  int32_t ic=0;
-  //int dx=(x1>x0) ? (x1-x0) : (x0-x1);
-  int32_t dy=(y1>y0) ? (y1-y0) : (y0-y1);
+void COG_VLGEM1277::DrawRect(int32_t x0, int32_t y0, int32_t x1, int32_t y1, col_e edge_col, col_e fill_col, pat_e pattern) {
   int32_t xs=(x1>x0) ? x0 : x1;
   int32_t xe=(x1>x0) ? x1 : x0;
   int32_t ys=(y1>y0) ? y0 : y1;
   int32_t ye=(y1>y0) ? y1 : y0;
-  if(col_e::NONE != col_fill) {
-    for(ic=0;ic<dy;ic++){
-      DrawHline(xs,xe,ys+ic,col_fill);     // draw center with fill-color
+  int32_t dy=ye-ys;
+  if(col_e::NONE != fill_col) {
+    for(int32_t ic=0; ic<dy; ic++) {     // draw center with fill-color in solid pattern
+      DrawHline(xs,xe,ys+ic,fill_col,pat_e::solid);  
     }
   }
-  DrawHline(xs,xe,ys,col_border,pattern);  // draw lines with border-color and line pattern
-  DrawHline(xs,xe,y1,col_border,pattern);
-  DrawVline(xs,ys,ye,col_border,pattern);
-  DrawVline(xe,ys,ye,col_border,pattern);
+  DrawHline(xs,xe,ys,edge_col,pattern);  // draw border with edge-color and given pattern
+  DrawHline(xs,xe,y1,edge_col,pattern);
+  DrawVline(xs,ys,ye,edge_col,pattern);
+  DrawVline(xe,ys,ye,edge_col,pattern);
   return;
 }
 
-void COG_VLGEM1277::DrawCircle(int32_t x0, int32_t y0, int32_t rad, col_e col_border, col_e col_fill) {
+void COG_VLGEM1277::DrawCircle(int32_t x0, int32_t y0, int32_t rad, col_e edge_col, col_e fill_col) {
+  mod_e cur_mod = GetRefreshMode();       // get current auto-update-mode
   int32_t xc  = -rad;
   int32_t yc  = 0;
   int32_t err = 2-2*rad;
   int32_t e2  = 0;
-  mod_e cur_mod = GetRefreshMode();       // get current auto-update-mode
-  SetRefreshMode(mod_e::autoRefresh_OFF); // set auto-update-mode to OFF, first draw circle into buffer
-  if(col_e::NONE != col_fill) {           // check if circle should be filled
-    do { // fill circle with col_fill
-      DrawVline(x0-xc, y0-yc, y0+yc, col_fill);
-      DrawVline(x0+xc, y0-yc, y0+yc, col_fill);
+  SetRefreshMode(mod_e::autoRefresh_OFF); // do not update until cirle is completed
+  if(col_e::NONE != fill_col) {           // check if circle should be filled
+    do { // draw vertial lines with fill color in solid pattern
+      DrawVline(x0-xc, y0-yc, y0+yc, fill_col,pat_e::solid);
+      DrawVline(x0+xc, y0-yc, y0+yc, fill_col,pat_e::solid);
       e2 = err;
       if (e2 <= yc) {
         err += ++yc*2+1;
@@ -280,11 +287,11 @@ void COG_VLGEM1277::DrawCircle(int32_t x0, int32_t y0, int32_t rad, col_e col_bo
   yc  = 0;
   err = -2-2*rad;
   e2  = 0;
-  do {  // draw border 
-    DrawPixel(x0-xc, y0+yc,col_border);
-    DrawPixel(x0+xc, y0+yc,col_border);
-    DrawPixel(x0+xc, y0-yc,col_border);
-    DrawPixel(x0-xc, y0-yc,col_border);
+  do {  // draw border in edge color
+    DrawPixel(x0-xc, y0+yc,edge_col);
+    DrawPixel(x0+xc, y0+yc,edge_col);
+    DrawPixel(x0+xc, y0-yc,edge_col);
+    DrawPixel(x0-xc, y0-yc,edge_col);
     e2 = err;
     if (e2 <= yc) {
       err += ++yc*2+1;
@@ -300,23 +307,24 @@ void COG_VLGEM1277::DrawCircle(int32_t x0, int32_t y0, int32_t rad, col_e col_bo
   RefreshLCD(m_mod);
 }
 
-void COG_VLGEM1277::SetFont(uint8_t* font,col_e col_fg, col_e col_bg) {
-  m_fnt       = font;      // map ptr to font-table
-  m_fnt_bpc   = m_fnt[0];  // bytes per character
-  m_fnt_width = m_fnt[1];  // char outline width 
-  m_fnt_height= m_fnt[2];  // char outline height
-  m_fnt_bpl   = m_fnt[3];  // bytes per line 
-  m_fnt_ch_s  = m_fnt[4];  // start character
-  m_fnt_ch_e  = m_fnt[5];  // end character
-  m_fnt_prop  = m_fnt[6];  // 0=mono spaced 1=proportional font
-  m_fg        = col_fg;    // foreground color
-  m_bg        = col_bg;    // background color
-  SetLfMode(lf_e::autoLF_ON);   // wake up with auto linefeed mode
+void COG_VLGEM1277::SetFont(uint8_t *font, col_e col_fg, col_e col_bg) {
+  m_fnt       = font;            // map ptr to font-table
+  m_fnt_hdr   = 7;               // fix header are 7 bytes
+  m_fnt_bpc   = m_fnt[0];        // bytes per character
+  m_fnt_width = m_fnt[1];        // char outline width 
+  m_fnt_height= m_fnt[2];        // char outline height
+  m_fnt_bpl   = m_fnt[3];        // bytes per line 
+  m_fnt_ch_s  = m_fnt[4];        // start character
+  m_fnt_ch_e  = m_fnt[5];        // end character
+  m_fnt_prop  = m_fnt[6];        // 0=mono spaced 1=proportional font
+  m_fg_col    = col_fg;          // foreground color
+  m_bg_col    = col_bg;          // background color
+  SetLfMode(lf_e::autoLF_ON);    // wake up with auto linefeed mode
 }
 
 void COG_VLGEM1277::DrawChar(uint8_t ch) {
-  uint8_t *ch_ptr=NULL;      // vertical line of character to be drawn
-  int32_t ic=0;
+  uint8_t *ch_ptr=nullptr;       // vertical line of characters
+  int32_t ic=0;                  // pixel counter
   int32_t xc=0;                  // column counter x-direction
   int32_t yc=0;                  // row counter y-direction
   int32_t bc=0;                  // loops from 0..bytes_per_line of character
@@ -335,59 +343,60 @@ void COG_VLGEM1277::DrawChar(uint8_t ch) {
     return;                  // do nothing, char is out of range
   }
 
-  // is bottom reached?
+  // is bottom of display reached?
   if ((m_cur_y+m_fnt_height) > LCD_HEIGHT) { 
     Scroll();                // scroll up one Text-Line
     m_cur_y -= m_fnt_height; // correct y position of cursor
   } 
   
-  // is auto linefeed on and right border reached?
+  // is cursor at the right border and auto-linefeed==ON?
   if ( (lf_e::autoLF_ON==m_lf) && ((m_cur_x+m_fnt_width) > LCD_WIDTH)) {
     m_cur_x = 0;             // carriage return
     m_cur_y += m_fnt_height; // line feed 
   }
 
-  // again: is bottom reached
+  // double check: is bottom reached?
   if ((m_cur_y+m_fnt_height) > LCD_HEIGHT) {
     Scroll();               // scroll up one Text-Line
     m_cur_y -= m_fnt_height;// correct y position of cursor
   }
   
-  // finally the cursor is prepared, draw the character now
-  ch_ptr = &m_fnt[(ch_idx * m_fnt_bpc) + FONT_HDR];   // jump to char bitmap
-  ch_width = ch_ptr[0];                               // if proportional font, char-width is needed 
+  // cursor-position is OK now, next draw current character 
+  ch_ptr = &m_fnt[(ch_idx * m_fnt_bpc) + m_fnt_hdr];  // jump to bitmap of current char
+  ch_width = ch_ptr[0];                               // char-width is needed for proportional fonts 
   for(xc=0;xc<m_fnt_width;xc++) {                     // loop in x-direction
     for(yc=0,bc=0;bc<m_fnt_bpl;bc++) {                // if fontheight>8, loop over byte-per-line
       int ln=ch_ptr[1+(xc*m_fnt_bpl)+bc];             // extract line to draw
       for(ic=0;(ic<8)&&(yc<m_fnt_height);ic++,yc++){  // loop in y-direction, stop after all dots are set
         uint8_t msk = (1<<ic);                        // mask single dots
-        col_e col = (msk==(ln&msk))?m_fg:m_bg;        // dot 1=foreground 0=background
+        col_e col=(msk==(ln&msk))?m_fg_col:m_bg_col;  // determine dot: 1=foreground 0=background
         DrawPixel(m_cur_x+xc,m_cur_y+yc,col);         // set dot within bitmap
       }
     }
   }
-  m_cur_x += (1==m_fnt_prop)?ch_width+1:m_fnt_width;  // proportional fonts gets one pixel gap
+  m_cur_x += (1==m_fnt_prop)?ch_width+1:m_fnt_width;  // proportional fonts get 1-pixel gap between chars
 }
 
 void COG_VLGEM1277::DrawString(const char *str, uint32_t typewriter){
-  int32_t ic=0,len=strlen(str);
-  for(ic=0;ic<len;ic++) {
-    DrawChar(str[ic]);
-    if(0!=typewriter) { // simulate typewriter
-      RefreshLCD(); 
-      delay(typewriter);
-    }
-  } 
-  RefreshLCD(m_mod);
+  int32_t len=0;
+  if((nullptr!=str) && (0!=(len=strlen(str)))) {
+    for(int32_t ic=0; ic<len; ic++) {
+      DrawChar(str[ic]);
+      if(typewriter>0) { // simulate typewriter, i.e. update display with pause for every char
+        RefreshLCD(); 
+        delay(typewriter);
+      }
+    } 
+    RefreshLCD(m_mod);
+  }
 }
 
-
-
+// ----------------------------------------------------------------------------
 // virtual functions, derived from Print class
+// ------------------------------------------------------------------------
 
 size_t COG_VLGEM1277::write(const uint8_t *buffer, size_t size){
-  int32_t ic=0;
-  for(ic=0;ic<size;ic++) {
+  for(int32_t ic=0; ic<size; ic++) {
     write(buffer[ic]);
   } 
   return size;
@@ -397,5 +406,4 @@ size_t COG_VLGEM1277::write(const uint8_t character){
   DrawChar(character);
   return 1;
 }
-
 

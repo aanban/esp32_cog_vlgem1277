@@ -2,7 +2,7 @@
 // GLCD FontSize : 6 x 8
 // proportional font
 
-const uint8_t Nusstorte6x8w[] = {
+const uint8_t Square6x8[] = {
   7,   // offset 6*1 + 1
   6,   // width
   8,   // height

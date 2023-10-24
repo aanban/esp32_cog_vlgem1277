@@ -4,15 +4,15 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-// LCD-Model:    Varitronix VL-FS-COG-VLGEM1277 
-// Size:         LCD with 240x64 pixel 
-// LCD-Driver:   ESPON S1D1572100B000 
+// Model:     Varitronix VL-FS-COG-VLGEM1277 
+// Size:      240x64 pixel 
+// Driver-IC: ESPON S1D1572100B000 
 
 constexpr int32_t LCD_WIDTH   = 240;      // number of pixels in width 
 constexpr int32_t LCD_HEIGHT  =  64;      // number of pixels in height
 constexpr int32_t LCD_N_PAGE  =  16;      // number of pages = height/4 
-constexpr int32_t xMax = LCD_WIDTH-1;     // pixel positions from 0..239
-constexpr int32_t yMax = LCD_HEIGHT-1;    // pixel positions from 0..63
+constexpr int32_t xMax = LCD_WIDTH-1;     // range x [0..239]
+constexpr int32_t yMax = LCD_HEIGHT-1;    // range y [0..63]
 
 // ESPON S1D1572100B000 init commands
 constexpr uint8_t LCD_CMD_DATA_WRITE         = 0x1D;    // wr Display Data    (n-bytes)
@@ -32,9 +32,6 @@ constexpr uint8_t LCD_CMD_PWR_CONTROL        = 0x25;    // set Power Control (2 
 constexpr uint8_t LCD_CMD_LC_DRIVE_VOLTAGE   = 0x2B;    // set Liquid Crystal Drive Voltage Select (2 byte)
 constexpr uint8_t LCD_CMD_EL_VOLUME          = 0x81;    // set Electronic Volume (2 byte)
 constexpr uint8_t LCD_CMD_RESET              = 0xE2;    // do Software Reset
-
-// GLCD type font parameter
-constexpr uint8_t FONT_HDR                   = 7;       // header of font structure
 
 // 4 colors are possible, NONE for fill color
 enum class col_e { NONE, WHITE, LIGHT_GREY, GREY, BLACK };
@@ -68,11 +65,13 @@ class COG_VLGEM1277 : public Print {
     // draw parameters 
     int32_t m_cur_x;      // current cursor x position
     int32_t m_cur_y;      // current cursor y position
-    col_e m_fg;           // foreground drawing color
-    col_e m_bg;           // background drawing color
+    col_e   m_edge_col;   // border color 
+    col_e   m_fill_col;   // fill color
+    pat_e   m_pat;        // line pattern [solid, dotted]
 
     // font parameters
     uint8_t *m_fnt;       // the current font-array
+    int16_t m_fnt_hdr;    // the font header size
     int16_t m_fnt_width;  // char outline width
     int16_t m_fnt_height; // char outline height
     int16_t m_fnt_bpl;    // bytes per line
@@ -80,6 +79,9 @@ class COG_VLGEM1277 : public Print {
     int16_t m_fnt_ch_s;   // start character
     int16_t m_fnt_ch_e;   // end character
     int16_t m_fnt_prop;   // 0=mono spaced 1=proportional 
+    col_e m_fg_col;       // foreground drawing color
+    col_e m_bg_col;       // background drawing color
+
     
   public:
     // constructor
@@ -111,6 +113,14 @@ class COG_VLGEM1277 : public Print {
     // fill Display with given color
     // @param color color to be filled, BLACK,GREY,LIGHT_GREY or WHITE
     void ClearScreen(col_e color=col_e::BLACK);
+
+    // set foreground color
+    // @param color  border color
+    inline void SetBorderColor(col_e color) { m_edge_col=color; }
+    
+    // set background color
+    // @param color  background color
+    inline void SetFillColor(col_e color) { m_fill_col=color; }
     
     // set Font for Textoutput and foreground and background color
     // @param fnt     pointer to font array
@@ -151,15 +161,27 @@ class COG_VLGEM1277 : public Print {
     // @param x x-position
     // @param y y-position
     // @param color = [BLACK,GREY,LIGHT_GREY or WHITE]
-    void DrawPixel(int32_t x0, int32_t y0, col_e color=col_e::WHITE); 
+    void DrawPixel(int32_t x0, int32_t y0, col_e color); 
 
-    // draw line in given color or WHITE as default
+    // draw pixel with border color
+    // @param x x-position
+    // @param y y-position
+    inline void DrawPixel(int32_t x0, int32_t y0) { DrawPixel(x0,y0,m_edge_col); }
+
+    // draw line in given color 
     // @param x0    start x-position
     // @param x1    end x-position
     // @param y0    start y-position
     // @param y1    end y-position
     // @param color = [BLACK,GREY,LIGHT_GREY or WHITE]
-    void DrawLine(int32_t x0, int32_t y0, int32_t x1, int32_t y1, col_e color=col_e::WHITE);
+    void DrawLine(int32_t x0, int32_t y0, int32_t x1, int32_t y1, col_e color);
+
+    // draw line with default color
+    // @param x0    start x-position
+    // @param x1    end x-position
+    // @param y0    start y-position
+    // @param y1    end y-position
+    inline void DrawLine(int32_t x0, int32_t y0, int32_t x1, int32_t y1) {DrawLine(x0,y0,x1,y1,m_edge_col);}
 
     // draw horzontal line in given color or WHITE as default
     // @param x0    start x-position
@@ -167,15 +189,27 @@ class COG_VLGEM1277 : public Print {
     // @param y0    y-position
     // @param color = [BLACK,GREY,LIGHT_GREY or WHITE]
     // @param pattern = [solid,dotted]
-    void DrawHline(int32_t x0, int32_t x1, int32_t y0, col_e color=col_e::WHITE, pat_e pattern=pat_e::solid);
-    
+    void DrawHline(int32_t x0, int32_t x1, int32_t y0, col_e color, pat_e pattern);
+
+    // draw horzontal line with default color
+    // @param x0    start x-position
+    // @param x1    end x-position
+    // @param y0    y-position
+    inline void DrawHLine(int32_t x0, int32_t x1, int32_t y0) { DrawHline(x0,x1,y0,m_edge_col,m_pat); }
+
     // draw vertical line in given color or WHITE as default
     // @param x0    x-position
     // @param y0    start y-position
     // @param y1    end y-position
     // @param color = [BLACK,GREY,LIGHT_GREY or WHITE]
-    void DrawVline(int32_t x0, int32_t y0, int32_t y1, col_e color=col_e::WHITE, pat_e pattern=pat_e::solid);
-    
+    void DrawVline(int32_t x0, int32_t y0, int32_t y1, col_e color, pat_e pattern);
+
+    // draw vertical line with default color
+    // @param x0    x-position
+    // @param y0    start y-position
+    // @param y1    end y-position
+    inline void DrawVline(int32_t x0, int32_t y0, int32_t y1) { DrawVline(x0,y0,y1,m_edge_col,m_pat); }
+
     // draw rectangle in given colors, default frame=WHITE and filling=BLACK
     // @param x0    start x-position
     // @param x1    end x-position
@@ -184,7 +218,15 @@ class COG_VLGEM1277 : public Print {
     // @param border_color = [BLACK,GREY,LIGHT_GREY or WHITE]
     // @param fill_color   = [BLACK,GREY,LIGHT_GREY or WHITE]
     // @param pattern = [solid,dotted]
-    void DrawRect(int32_t x0, int32_t y0, int32_t x1, int32_t y1, col_e border_color=col_e::WHITE, col_e fill_color=col_e::BLACK, pat_e pattern=pat_e::solid);
+    void DrawRect(int32_t x0, int32_t y0, int32_t x1, int32_t y1, col_e border_color, col_e fill_color, pat_e pattern);
+
+    // draw rectangle with default colors
+    // @param x0    start x-position
+    // @param x1    end x-position
+    // @param y0    start y-position
+    // @param y1    end y-position
+    inline void DrawRect(int32_t x0, int32_t y0, int32_t x1, int32_t y1) { DrawRect(x0,y0,x1,y1,m_edge_col,m_fill_col,m_pat); }
+
 
     // draw rectangle with border color WHITE with no filling
     // @param x0     start x-position
@@ -192,7 +234,7 @@ class COG_VLGEM1277 : public Print {
     // @param x1     end x-position
     // @param y1     end y-position
     // @param pat    = [solid,dotted]
-    void DrawBox(int32_t x0, int32_t y0, int32_t x1, int32_t y1, pat_e pat=pat_e::solid);
+    void DrawBox(int32_t x0, int32_t y0, int32_t x1, int32_t y1, pat_e pat);
 
     // draw circle at pos (x0,y0) with radius rad in given colors, default frame=WHITE and filling=BLACK
     // @param x0    center x position
@@ -200,8 +242,13 @@ class COG_VLGEM1277 : public Print {
     // @param rad   radius
     // @param border_color = [BLACK,GREY,LIGHT_GREY or WHITE]
     // @param fill_color   = [BLACK,GREY,LIGHT_GREY or WHITE]
-    void DrawCircle(int32_t x0, int32_t y0, int32_t rad, col_e border_color=col_e::WHITE, col_e fill_color=col_e::BLACK);
+    void DrawCircle(int32_t x0, int32_t y0, int32_t rad, col_e border_color, col_e fill_color);
 
+    // draw circle at pos (x0,y0) with radius rad and default colors
+    // @param x0    center x position
+    // @param y0    center y-position
+    // @param rad   radius
+    inline void DrawCircle(int32_t x0, int32_t y0, int32_t rad) { DrawCircle(x0,y0,rad,m_edge_col,m_fill_col); }
 
     // draw a single character at the current cursor position, checks if ch is in range. Do a auto cr-lf 
     // if right border is reached and do do a srcoll if bottom is reached, and set the cursor postion accordingly
