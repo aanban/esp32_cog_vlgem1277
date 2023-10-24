@@ -7,6 +7,11 @@ Currently available at [pollin.de](https://www.pollin.de/p/varitronix-lcd-cog-vl
 
 Some more information about how to connect to a µC can be found at [mikrocontroller.net](https://www.mikrocontroller.net/topic/472549)
 
+![img03](doc/COG_VLGEM1277_03.jpg)
+![img02](doc/COG_VLGEM1277_02.jpg)
+![img04](doc/COG_VLGEM1277_04.jpg)
+![img05](doc/COG_VLGEM1277_05.jpg)
+
 # sample code
 
 ### - include header file and font files
